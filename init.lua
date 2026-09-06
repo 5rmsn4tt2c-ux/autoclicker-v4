@@ -29,7 +29,7 @@ local function downloadFile(path, func)
 			downloader.Text = 'Downloading '.. path
 		end
 		local suc, res = pcall(function()
-			return game:HttpGet('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/'..readfile('autoclicker-v4/profiles/commit.txt')..'/'..select(1, path:gsub('autoclicker-v4/', '')), true)
+			return game:HttpGet('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/main/'..select(1, path:gsub('autoclicker-v4/', '')), true)
 		end)
 		if not suc or res == '404: Not Found' then
 			error(res)
@@ -65,27 +65,11 @@ for _, folder in {'catrewrite', 'autoclicker-v4/games', 'autoclicker-v4/profiles
 end
 
 if not shared.VapeDeveloper then
-	local commit = license.Commit or nil
-	if not commit then
-		local ok, subbed = pcall(function()
-			return game:HttpGet('https://api.github.com/repos/5rmsn4tt2c-ux/autoclicker-v4/commits/main')
-		end)
-		if ok and type(subbed) == 'string' then
-			commit = subbed:match('"sha"%s*:%s*"(%x+)"')
-		end
-		commit = commit and #commit == 40 and commit or 'main'
-	end
-	if commit == 'main' or (isfile('autoclicker-v4/profiles/commit.txt') and readfile('autoclicker-v4/profiles/commit.txt') or '') ~= commit then
-		if commit ~= 'main' and isfile('autoclicker-v4/profiles/commit.txt') then
-			shared.updated = readfile('autoclicker-v4/profiles/commit.txt')
-		end
-		wipeFolder('catrewrite')
-		wipeFolder('autoclicker-v4/games')
-		wipeFolder('autoclicker-v4/guis')
-		wipeFolder('autoclicker-v4/libraries')
-		wipeFolder('autoclicker-v4/texturepacks')
-	end
-	writefile('autoclicker-v4/profiles/commit.txt', commit)
+	wipeFolder('catrewrite')
+	wipeFolder('autoclicker-v4/games')
+	wipeFolder('autoclicker-v4/guis')
+	wipeFolder('autoclicker-v4/libraries')
+	wipeFolder('autoclicker-v4/texturepacks')
 end
 
 downloader.Text = ''
