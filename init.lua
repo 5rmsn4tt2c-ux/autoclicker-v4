@@ -29,7 +29,7 @@ local function downloadFile(path, func)
 			downloader.Text = 'Downloading '.. path
 		end
 		local suc, res = pcall(function()
-			return game:HttpGet('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/main/'..select(1, path:gsub('autoclicker-v4/', ''))..'?t='..tostring(tick()), true)
+			return game:HttpGet('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/main/'..select(1, path:gsub('autoclicker-v4/', '')), true)
 		end)
 		if not suc or res == '404: Not Found' then
 			error(res)
