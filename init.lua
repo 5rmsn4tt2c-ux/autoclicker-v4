@@ -23,16 +23,31 @@ downloader.Font = Enum.Font.Arial
 downloader.Text = ''
 downloader.Parent = Instance.new('ScreenGui', gethui and gethui() or cloneref(game:GetService('CoreGui')))
 
+local httpRequest = http_request or request or (http and http.request) or (syn and syn.request)
+local function fetchRaw(url)
+	if httpRequest then
+		local ok, resp = pcall(httpRequest, { Url = url, Method = 'GET', Headers = { ['User-Agent'] = 'Autoclicker' } })
+		if ok and resp then
+			local code = resp.StatusCode or resp.status_code or 0
+			local body = resp.Body or resp.body
+			if code >= 200 and code < 300 and body then return body end
+			if code == 404 then return nil, '404' end
+		end
+	end
+	local ok, res = pcall(game.HttpGet, game, url, true)
+	if ok and res and res ~= '404: Not Found' then return res end
+	return nil, tostring(res)
+end
+
 local function downloadFile(path, func)
 	if not isfile(path) then
 		if not license.Closet then
 			downloader.Text = 'Downloading '.. path
 		end
-		local suc, res = pcall(function()
-			return game:HttpGet('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/main/'..select(1, path:gsub('autoclicker-v4/', '')), true)
-		end)
-		if not suc or res == '404: Not Found' then
-			error(res)
+		local url = 'https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/main/'..select(1, path:gsub('autoclicker-v4/', ''))
+		local res, err = fetchRaw(url)
+		if not res then
+			error('fetch failed: '..url..' ('..tostring(err)..')')
 		end
 		if path:find('.lua') then
 			res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.\n'..res
