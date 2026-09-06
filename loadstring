@@ -35,7 +35,7 @@ if not getgenv().__repoAuth then
 	end
 end
 
-local body, code = ghGet("https://raw.githubusercontent.com/" .. repo .. "/main/init.lua")
+local body, code = ghGet("https://raw.githubusercontent.com/" .. repo .. "/main/init.lua?t=" .. tostring(tick()))
 if code == 200 then
 	loadstring(body, "init.lua")({})
 else
