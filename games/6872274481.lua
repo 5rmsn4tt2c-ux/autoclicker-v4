@@ -19706,7 +19706,7 @@ run(function()
 	local Health
 	local linked
 	
-	local Link = bedwars.Handler:Get('WarlockLinkTarget')
+	local Link = bedwars.Handler and bedwars.Handler:Get('WarlockLinkTarget')
 	
 	local function getHurtAlly(origin)
 		local best, bestHealth
@@ -19760,7 +19760,7 @@ run(function()
 	
 							if AutoEldric.Enabled and target.Character and target.Character.Parent then
 								linked = target.Character
-								Link:Fire('CallServer', {target = target.Character})
+								if Link then Link:Fire('CallServer', {target = target.Character}) end
 							end
 						elseif not target then
 							linked = nil
