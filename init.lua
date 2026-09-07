@@ -93,6 +93,7 @@ if not shared.VapeDeveloper then
 		wipeFolder('autoclicker-v4/guis')
 		wipeFolder('autoclicker-v4/libraries')
 		wipeFolder('autoclicker-v4/texturepacks')
+		wipeFolder('autoclicker-v4/assets')
 		if remoteId then
 			writefile('autoclicker-v4/profiles/buildid.txt', remoteId)
 		end

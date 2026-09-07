@@ -322,7 +322,7 @@ end
 
 local function downloadFile(path, func)
 	local isBinary = not path:find('.lua')
-	if isBinary or not isfile(path) then
+	if not isfile(path) then
 		createDownloader(path)
 		local suc, res = pcall(function()
 			return game:HttpGet('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/'..readfile('autoclicker-v4/profiles/commit.txt')..'/'..select(1, path:gsub('autoclicker%-v4/', ''))..'?t='..tostring(tick()), true)
