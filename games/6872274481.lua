@@ -466,6 +466,184 @@ local function getFunctionRange(func)
 end
 getgenv().getFunctionRange = getFunctionRange
 
+
+local function notif(...)
+	return vape:CreateNotification(...)
+end
+getgenv().notif = notif
+
+local function collection(tags, module, customadd, customremove)
+	tags = typeof(tags) ~= 'table' and {tags} or tags
+	local objs, indexes, connections = {}, {}, {}
+
+	for _, v in tags do
+		table.insert(connections, collectionService:GetInstanceAddedSignal(v):Connect(function(obj)
+			if customadd then
+				customadd(objs, obj, v)
+				return
+			end
+			objs[#objs + 1] = obj
+			indexes[obj] = #objs
+		end))
+		table.insert(connections, collectionService:GetInstanceRemovedSignal(v):Connect(function(obj)
+			if customremove then
+				customremove(objs, obj, v)
+				return
+			end
+			if customadd then
+				local index = table.find(objs, obj)
+				if index then
+					table.remove(objs, index)
+				end
+				return
+			end
+
+			local index = indexes[obj]
+			if index then
+				local size = #objs
+				local last = objs[size]
+				objs[index] = last
+				indexes[last] = index
+				objs[size] = nil
+				indexes[obj] = nil
+			end
+		end))
+
+		for _, v2 in collectionService:GetTagged(v) do
+			if customadd then
+				customadd(objs, v2, v)
+				continue
+			end
+			objs[#objs + 1] = v2
+			indexes[v2] = #objs
+		end
+	end
+
+	local function cleanFunc(self)
+		for _, v in connections do
+			v:Disconnect()
+		end
+		table.clear(connections)
+		table.clear(objs)
+		table.clear(indexes)
+		table.clear(self)
+	end
+	if module then
+		module:Clean(cleanFunc)
+	end
+	return objs, cleanFunc
+end
+getgenv().collection = collection
+
+local function getFacingEntity(entitysettings)
+	if not entitylib.isAlive then
+		return nil
+	end
+
+	local rootpart = entitylib.character.RootPart
+	local origin = entitysettings.Origin or rootpart.Position
+	local facing = rootpart.CFrame.LookVector * Vector3.new(1, 0, 1)
+	local cone = math.rad((entitysettings.Angle or 120) / 2)
+	entitysettings.Angle = nil
+	entitysettings.Origin = origin
+
+	for _, v in entitylib.AllPosition(entitysettings) do
+		local delta = (v.RootPart.Position - origin) * Vector3.new(1, 0, 1)
+		if facing.Magnitude == 0 or delta.Magnitude == 0 or math.acos(math.clamp(facing.Unit:Dot(delta.Unit), -1, 1)) <= cone then
+			return v
+		end
+	end
+	return nil
+end
+getgenv().getFacingEntity = getFacingEntity
+
+local function getItem(itemName, inv, find)
+	for i, v in (inv or store.inventory.inventory.items) do
+		if v.itemType == itemName or (find and v.itemType:find(itemName)) then
+			return v, i
+		end
+	end
+	return nil
+end
+getgenv().getItem = getItem
+
+local function getNearGround(range)
+	range = Vector3.new(3, 3, 3) * (range or 10)
+	local localPosition, mag, closest = entitylib.character.RootPart.Position, 60
+	local blocks = getBlocksInPoints(bedwars.BlockController:getBlockPosition(localPosition - range), bedwars.BlockController:getBlockPosition(localPosition + range))
+	for _, v in blocks do
+		if not getPlacedBlock(v + Vector3.new(0, 3, 0)) then
+			local newmag = (localPosition - v).Magnitude
+			if newmag < mag then
+				mag, closest = newmag, v + Vector3.new(0, 3, 0)
+			end
+		end
+	end
+
+	table.clear(blocks)
+	return closest
+end
+getgenv().getNearGround = getNearGround
+
+local function roundPos(vec)
+	return Vector3.new(math.round(vec.X / 3) * 3, math.round(vec.Y / 3) * 3, math.round(vec.Z / 3) * 3)
+end
+getgenv().roundPos = roundPos
+
+local function fireProjectile(item, ammo, projectile, target)
+	local meta = bedwars.ProjectileMeta[projectile]
+	if not meta then return false end
+
+	local origin = entitylib.character.RootPart.Position
+	local speed, gravity = meta.launchVelocity, meta.gravitationalAcceleration or 196.2
+	local calc = solveProjectile(origin, speed, gravity, target)
+	if not calc then return false end
+
+	local shootPosition = (CFrame.new(origin, calc) * CFrame.new(Vector3.new(-bedwars.BowConstantsTable.RelX, -bedwars.BowConstantsTable.RelY, -bedwars.BowConstantsTable.RelZ))).Position
+	local aim = solveProjectile(shootPosition, speed, gravity, target) or calc
+	local velocity, id = CFrame.lookAt(shootPosition, aim).LookVector * speed, httpService:GenerateGUID(true)
+	bedwars.Handler:Get('ProjectileFire'):Fire('CallServerAsync',
+		item.tool,
+		ammo,
+		projectile,
+		shootPosition,
+		origin,
+		velocity,
+		id,
+		{
+			drawDurationSeconds = 1,
+			shotId = httpService:GenerateGUID(false)
+		},
+		workspace:GetServerTimeNow() - 0.045
+	):andThen(function(res)
+		if res then
+			res.Parent = replicatedStorage
+		end
+	end)
+	prediction.trackShot(target.RootPart)
+	return true
+end
+getgenv().fireProjectile = fireProjectile
+
+local sortmethods = {
+	Damage = function(a, b)
+		return (a.Entity.Character:GetAttribute('LastDamageTakenTime') or 0) < (b.Entity.Character:GetAttribute('LastDamageTakenTime') or 0)
+	end,
+	Health = function(a, b)
+		return a.Entity.Health < b.Entity.Health
+	end,
+	Distance = function(a, b)
+		return a.Distance < b.Distance
+	end,
+}
+getgenv().sortmethods = sortmethods
+
+local sortlist = {}
+for i in sortmethods do
+	table.insert(sortlist, i)
+end
+table.sort(sortlist)
+getgenv().sortlist = sortlist
 local function waitForChildOfType(obj, name, timeout, prop)
 	local check, returned = tick() + timeout, nil
 	repeat
@@ -918,6 +1096,113 @@ run(function()
 		end
 	})
 	getgenv().bedwars = bedwars
+
+	-- Remote handler: wraps bedwars remotes with caching and rate limiting
+	local RemoteHandler = {}
+	RemoteHandler.CachedRemotes = {}
+	RemoteHandler.__index = RemoteHandler
+
+	local RemoteDefinitionConstruct, RemotesInConstruct
+	if canDebug then
+		local Remotes = require(replicatedStorage.TS.remotes).default
+		RemoteDefinitionConstruct, RemotesInConstruct = next(getupvalue(getrawmetatable(Remotes.Server).Get, 1))
+	end
+
+	local GlobalMiddleware = RemoteDefinitionConstruct and getupvalue(RemoteDefinitionConstruct.globalMiddleware[2], 1)
+
+	function RemoteHandler.Get(self, RemoteID)
+		if RemoteHandler.CachedRemotes[RemoteID] then
+			return RemoteHandler.CachedRemotes[RemoteID]
+		end
+
+		local Remote = {}
+		setmetatable(Remote, RemoteHandler)
+
+		Remote.ID = RemoteID
+		Remote.RequestsInLastMinute = 0
+		Remote.MaxRequestsPerMinute = Remote:GetRateLimit()
+		Remote.LastRateLimitReset = 0
+
+		local Success, AttempedRemote = pcall(Client.Get, Client, Remote.ID)
+		Remote.Success = Success
+		Remote.Remote = AttempedRemote
+
+		if not Success or not Remote.Remote then
+			Remote.Remote = nil
+		end
+
+		RemoteHandler.CachedRemotes[RemoteID] = Remote
+		return Remote
+	end
+
+	function RemoteHandler:Fire(Method, ...)
+		local Remote = self.Remote
+		if not self.Success or not Remote then
+			return {andThen = function() end}
+		end
+
+		if (os.clock() - self.LastRateLimitReset) >= 60 then
+			self:ResetRateLimit()
+		end
+
+		if self:GetCurrentRequests() >= self:GetRateLimit() then
+			return {andThen = function() end}
+		end
+
+		self:IncrementRequests()
+		local CallingFunction = (Method and Remote[Method]) or (Remote.CallServer or Remote.CallServerAsync or Remote.SendToServer)
+		if CallingFunction then
+			return CallingFunction(Remote, ...)
+		end
+
+		return
+	end
+
+	function RemoteHandler:ResetRateLimit()
+		self.RequestsInLastMinute = 0
+		self.LastRateLimitReset = os.clock()
+	end
+
+	function RemoteHandler:GetCurrentRequests()
+		return self.RequestsInLastMinute
+	end
+
+	function RemoteHandler:IncrementRequests()
+		self.RequestsInLastMinute = self.RequestsInLastMinute + 1
+	end
+
+	function RemoteHandler:GetRateLimit()
+		local RemoteName = self.ID
+		if self.CachedRemotes[RemoteName] then
+			return self.CachedRemotes[RemoteName].MaxRequestsPerMinute
+		end
+
+		if not GlobalMiddleware then
+			local CachedLimits = cheatenginelib and cheatenginelib.RateLimits
+			return CachedLimits and CachedLimits[RemoteName] or 300
+		end
+
+		local GlobalFind = GlobalMiddleware[RemoteName]
+		local RateLimitValue = (typeof(GlobalFind) ~= 'number' and 300) or GlobalFind
+
+		if not GlobalFind then
+			local TargetRemote = RemotesInConstruct[RemoteName]
+			local RemoteRateLimit = (TargetRemote and TargetRemote.ServerMiddleware)
+			if RemoteRateLimit and typeof(RemoteRateLimit) == 'table' then
+				for _, v in RemoteRateLimit do
+					if typeof(v) == 'function' and (#getupvalues(v) >= 6 and tostring(getupvalue(v, 6)):find('Request limit')) then
+						local Value = getupvalue(v, 3)
+						RateLimitValue = (typeof(Value) == 'number' and Value) or RateLimitValue
+						break
+					end
+				end
+			end
+		end
+
+		return RateLimitValue
+	end
+
+	bedwars.Handler = RemoteHandler
 	store.enchants = setmetatable({}, {
 		__index = function(self, plr)
 			return {
@@ -22250,7 +22535,7 @@ run(function()
 	local dragonForm = false
 	local nextBreath = 0
 	
-	local Breath = bedwars.Handler:Get('DragonBreath')
+	local Breath = bedwars.Handler and bedwars.Handler:Get('DragonBreath')
 	
 	local function isLocal(data)
 		if type(data) ~= 'table' then return true end
@@ -22301,7 +22586,7 @@ run(function()
 	
 						if target then
 							nextBreath = tick() + Delay.Value
-							Breath:Fire('SendToServer', {player = lplr, targetPoint = target.RootPart.Position})
+							if Breath then Breath:Fire('SendToServer', {player = lplr, targetPoint = target.RootPart.Position}) end
 						end
 					end
 					task.wait(0.05)
@@ -22483,7 +22768,7 @@ run(function()
 	
 	local claimed = setmetatable({}, {__mode = 'k'})
 	
-	local Activate = bedwars.Handler:Get('ActivateGravestone')
+	local Activate = bedwars.Handler and bedwars.Handler:Get('ActivateGravestone')
 	
 	CryptAura = vape.Categories.Kits:CreateModule({
 		Name = 'CryptAura',
