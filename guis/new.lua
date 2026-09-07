@@ -5314,7 +5314,7 @@ function mainapi:CreateLegit()
 			if moduleapi.Children then
 				moduleapi.Children.Visible = moduleapi.Enabled
 			end
-			title.TextColor3 = moduleapi.Enabled and color.Light(uipallet.Text, 0.2) or color.Dark(uipallet.Text, 0.31)
+			title.TextColor3 = moduleapi.Enabled and Color3.new(0, 0, 0) or color.Dark(uipallet.Text, 0.31)
 			module.BackgroundColor3 = moduleapi.Enabled and color.Light(uipallet.Main, 0.05) or module.BackgroundColor3
 			tween:Tween(knob, uipallet.Tween, {
 				BackgroundColor3 = moduleapi.Enabled and Color3.fromHSV(mainapi.GUIColor.Hue, mainapi.GUIColor.Sat, mainapi.GUIColor.Value) or color.Light(uipallet.Main, 0.14)
