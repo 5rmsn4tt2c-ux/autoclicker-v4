@@ -79,12 +79,24 @@ for _, folder in {'catrewrite', 'autoclicker-v4/games', 'autoclicker-v4/profiles
 	end
 end
 
+-- Wipe only when the remote build id changes (or user forces it).
+-- Keeps injection fast on repeated loads by reusing cached .lua/.png files.
 if not shared.VapeDeveloper then
-	wipeFolder('catrewrite')
-	wipeFolder('autoclicker-v4/games')
-	wipeFolder('autoclicker-v4/guis')
-	wipeFolder('autoclicker-v4/libraries')
-	wipeFolder('autoclicker-v4/texturepacks')
+	local remoteId
+	pcall(function()
+		remoteId = fetchRaw('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/main/profiles/version.txt?t='..tostring(tick()))
+	end)
+	local localId = isfile('autoclicker-v4/profiles/buildid.txt') and readfile('autoclicker-v4/profiles/buildid.txt') or ''
+	if shared.VapeForceUpdate or (remoteId and remoteId ~= localId) then
+		wipeFolder('catrewrite')
+		wipeFolder('autoclicker-v4/games')
+		wipeFolder('autoclicker-v4/guis')
+		wipeFolder('autoclicker-v4/libraries')
+		wipeFolder('autoclicker-v4/texturepacks')
+		if remoteId then
+			writefile('autoclicker-v4/profiles/buildid.txt', remoteId)
+		end
+	end
 end
 
 downloader.Text = ''
