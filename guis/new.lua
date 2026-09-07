@@ -53,10 +53,10 @@ local tween = {
 	tweenstwo = {}
 }
 local uipallet = {
-	Main = Color3.fromRGB(26, 25, 26),
-	Text = Color3.fromRGB(200, 200, 200),
-	Font = Font.fromEnum(Enum.Font.Arial),
-	FontSemiBold = Font.fromEnum(Enum.Font.Arial, Enum.FontWeight.SemiBold),
+	Main = Color3.fromRGB(38, 16, 30),
+	Text = Color3.fromRGB(255, 133, 200),
+	Font = Font.fromEnum(Enum.Font.GothamBold),
+	FontSemiBold = Font.fromEnum(Enum.Font.GothamBold, Enum.FontWeight.SemiBold),
 	Tween = TweenInfo.new(0.16, Enum.EasingStyle.Linear)
 }
 
@@ -2505,21 +2505,18 @@ function mainapi:CreateGUI()
 	addBlur(window)
 	addCorner(window)
 	makeDraggable(window)
-	local logo = Instance.new('ImageLabel')
+	local logo = Instance.new('TextLabel')
 	logo.Name = 'VapeLogo'
-	logo.Size = UDim2.fromOffset(62, 18)
-	logo.Position = UDim2.fromOffset(11, 10)
+	logo.Size = UDim2.fromOffset(160, 20)
+	logo.Position = UDim2.fromOffset(11, 8)
 	logo.BackgroundTransparency = 1
-	logo.Image = getcustomasset('autoclicker-v4/assets/new/guivape.png')
-	logo.ImageColor3 = select(3, uipallet.Main:ToHSV()) > 0.5 and uipallet.Text or Color3.new(1, 1, 1)
+	logo.Text = 'AUTOCLICKER V4'
+	logo.TextColor3 = Color3.fromRGB(255, 133, 200)
+	logo.TextXAlignment = Enum.TextXAlignment.Left
+	logo.TextYAlignment = Enum.TextYAlignment.Center
+	logo.TextSize = 16
+	logo.FontFace = Font.fromEnum(Enum.Font.FredokaOne)
 	logo.Parent = window
-	local logov4 = Instance.new('ImageLabel')
-	logov4.Name = 'V4Logo'
-	logov4.Size = UDim2.fromOffset(28, 16)
-	logov4.Position = UDim2.new(1, 1, 0, 1)
-	logov4.BackgroundTransparency = 1
-	logov4.Image = getcustomasset('autoclicker-v4/assets/new/guiv4.png')
-	logov4.Parent = logo
 	local children = Instance.new('Frame')
 	children.Name = 'Children'
 	children.Size = UDim2.new(1, 0, 1, -33)
