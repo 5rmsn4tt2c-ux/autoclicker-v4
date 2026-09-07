@@ -2916,6 +2916,50 @@ run(function()
 end)
 
 run(function()
+    local Desync
+    local hook
+
+    local function resync()
+        if entitylib.isAlive then
+            entitylib.character.RootPart.CFrame += Vector3.new(math.nan, math.nan, math.nan)
+            notif('Desync', 'Resynced', 2, 'info')
+        end
+    end
+    
+    Desync = vape.Categories.Blatant:CreateModule({
+        Name = 'Desync',
+        Function = function(callback)
+            if callback then
+                if not rakNetCheck('Desync') then
+                    Desync:Toggle()
+                    return
+                end
+    
+                hook = function(packet)
+                    if packet.AsArray[1] == 0x1b then
+                        local data = packet.AsBuffer
+                        buffer.writeu32(data, 1, 0xFFFFFFFF)
+                        packet:SetData(data)
+                    end
+                end
+    
+                resync()
+                raknet.add_send_hook(hook)
+            elseif hook then
+                raknet.remove_send_hook(hook)
+                hook = nil
+            end
+        end,
+        Tooltip = 'Prevent the server from replicating your current position to other players.'
+    })
+    
+    Desync:CreateButton({
+        Name = 'Resync',
+        Function = resync
+    })
+end)
+
+run(function()
     local Options = { TPTiming = tick() }
     local Mode
     local FloatMode
@@ -3276,6 +3320,81 @@ run(function()
 end)
 
 run(function()
+    local HighJump
+    local Mode
+    local Value
+    local AutoDisable
+
+    local function jump()
+    	local state = entitylib.isAlive and Enum.HumanoidStateType.Running or nil
+
+    	if state == Enum.HumanoidStateType.Running or state == Enum.HumanoidStateType.Landed then
+    		local root = entitylib.character.RootPart
+
+    		if Mode.Value == 'Velocity' then
+    			entitylib.character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    			root.AssemblyLinearVelocity =
+    				Vector3.new(root.AssemblyLinearVelocity.X, Value.Value, root.AssemblyLinearVelocity.Z)
+    		elseif Mode.Value == 'Impulse' then
+    			entitylib.character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    			task.delay(0, function()
+    				root:ApplyImpulse(Vector3.new(0, Value.Value - root.AssemblyLinearVelocity.Y, 0) * root.AssemblyMass)
+    			end)
+    		else
+    			local start = math.max(Value.Value - entitylib.character.Humanoid.JumpHeight, 0)
+    			repeat
+    				root.CFrame += Vector3.new(0, start * 0.016, 0)
+    				start = start - (workspace.Gravity * 0.016)
+    				if Mode.Value == 'CFrame' then
+    					task.wait()
+    				end
+    			until start <= 0
+    		end
+    	end
+    end
+
+    HighJump = vape.Categories.Blatant:CreateModule({
+    	Name = 'High Jump',
+    	Function = function(callback)
+    		if callback then
+    			if AutoDisable.Enabled then
+    				jump()
+    				HighJump:Toggle()
+    			else
+    				HighJump:Clean(runService.RenderStepped:Connect(function()
+    					if not inputService:GetFocusedTextBox() and inputService:IsKeyDown(Enum.KeyCode.Space) then
+    						jump()
+    					end
+    				end))
+    			end
+    		end
+    	end,
+    	ExtraText = function()
+    		return Mode.Value
+    	end,
+    	Tooltip = 'Lets you jump higher',
+    })
+    Mode = HighJump:CreateDropdown({
+    	Name = 'Mode',
+    	List = { 'Impulse', 'Velocity', 'CFrame', 'Instant' },
+    	Tooltip = 'Velocity - Uses smooth movement to boost you upward\nImpulse - Same as velocity while using forces instead\nCFrame - Directly adjusts the position upward\nInstant - Teleports you to the peak of the jump',
+    })
+    Value = HighJump:CreateSlider({
+    	Name = 'Velocity',
+    	Min = 1,
+    	Max = 150,
+    	Default = 50,
+    	Suffix = function(val)
+    		return val == 1 and 'stud' or 'studs'
+    	end,
+    })
+    AutoDisable = HighJump:CreateToggle({
+    	Name = 'Auto Disable',
+    	Default = true,
+    })
+end)
+
+run(function()
     local HitBoxes
     local Targets
     local TargetPart
@@ -3328,6 +3447,121 @@ run(function()
     	Suffix = function(val)
     		return val == 1 and 'stud' or 'studs'
     	end,
+    })
+end)
+
+run(function()
+    local InfiniteJump
+    local Mode
+    local jumps = 0
+
+    InfiniteJump = vape.Categories.Blatant:CreateModule({
+    	Name = 'Infinite Jump',
+    	Tooltip = 'Allows you to jump infinitely.',
+    	Function = function(callback: boolean)
+    		if callback then
+    			jumps = 0
+
+    			InfiniteJump:Clean(inputService.JumpRequest:Connect(function()
+    				jumps += 1
+    				if jumps > 1 and Mode.Value == 'Velocity' then
+    					local power = math.sqrt(2 * workspace.Gravity * entitylib.character.Humanoid.JumpHeight)
+    					entitylib.character.RootPart.Velocity = Vector3.new(
+    						entitylib.character.RootPart.Velocity.X,
+    						power,
+    						entitylib.character.RootPart.Velocity.Z
+    					)
+    				elseif Mode.Value == 'Jump' then
+    					entitylib.character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    				end
+    			end))
+    		end
+    	end,
+    	ExtraText = function()
+    		return Mode.Value
+    	end,
+    })
+    Mode = InfiniteJump:CreateDropdown({
+    	Name = 'Mode',
+    	List = { 'Jump', 'Velocity' },
+    })
+    InfiniteJump:CreateToggle({
+    	Name = 'TP Down',
+    })
+end)
+
+run(function()
+    local Invisible
+    local oldcf
+    local animtrack
+    local proper = true
+
+    local function animationTrickery()
+    	if entitylib.isAlive then
+    		local isR15 = entitylib.character.Humanoid.RigType == Enum.HumanoidRigType.R15
+    		local anim = Instance.new('Animation')
+    		anim.AnimationId = 'rbxassetid://'..(isR15 and '18537363391' or '215384594')
+    		animtrack = entitylib.character.Humanoid.Animator:LoadAnimation(anim)
+    		animtrack.Priority = Enum.AnimationPriority.Action4
+    		animtrack:Play(0, 0.001, 0)
+    		anim:Destroy()
+
+    		task.delay(0, function()
+    			animtrack.TimePosition = isR15 and 0.77 or 0.38
+    		end)
+    	end
+    end
+
+    Invisible = vape.Categories.Blatant:CreateModule({
+    	Name = 'Invisible',
+    	Function = function(callback)
+    		if callback then
+    			animationTrickery()
+
+    			local bindKey = httpService:GenerateGUID(true)
+    			runService:BindToRenderStep(bindKey, 0, function()
+    				if entitylib.isAlive and oldcf then
+    					entitylib.character.RootPart.CFrame = oldcf
+    					animtrack:AdjustWeight(0.001)
+    				end
+    			end)
+
+    			Invisible:Clean(function()
+    				runService:UnbindFromRenderStep(bindKey)
+    			end)
+
+    			Invisible:Clean(runService.Heartbeat:Connect(function(dt)
+    				if entitylib.isAlive then
+    					local isR15 = entitylib.character.Humanoid.RigType == Enum.HumanoidRigType.R15
+    					local root = entitylib.character.RootPart
+    					local cf = root.CFrame - Vector3.new(0, entitylib.character.Humanoid.HipHeight + (root.Size.Y / 2) - 1, 0)
+    					oldcf = root.CFrame
+
+    					root.CFrame = cf * CFrame.Angles(math.rad(isR15 and 180 or 90), 0, 0)
+    					animtrack:AdjustWeight(100)
+    				end
+    			end))
+
+    			Invisible:Clean(entitylib.Events.LocalAdded:Connect(function(char)
+    				local animator = char.Humanoid:WaitForChild('Animator', 1)
+    				if animator and Invisible.Enabled then
+    					oldroot = nil
+    					Invisible:Toggle()
+    					Invisible:Toggle()
+    				end
+    			end))
+    		else
+    			if animtrack then
+    				animtrack:Stop()
+    				animtrack:Destroy()
+    			end
+
+    			if entitylib.isAlive and oldcf then
+    				entitylib.character.RootPart.CFrame = oldcf
+    			end
+    		end
+    	end,
+    	Tooltip = 'Turns you invisible.'
     })
 end)
 
@@ -4274,6 +4508,255 @@ run(function()
     State = Spider:CreateToggle({
     	Name = 'Climb State',
     	Darker = true,
+    })
+end)
+
+run(function()
+    local SpinBot
+    local Mode
+    local XToggle
+    local YToggle
+    local ZToggle
+    local Value
+    local AngularVelocity
+
+    SpinBot = vape.Categories.Blatant:CreateModule({
+    	Name = 'Spin Bot',
+    	Function = function(callback)
+    		if callback then
+    			SpinBot:Clean(runService.PreSimulation:Connect(function()
+    				if entitylib.isAlive then
+    					if Mode.Value == 'RotVelocity' then
+    						local originalRotVelocity = entitylib.character.RootPart.RotVelocity
+    						entitylib.character.Humanoid.AutoRotate = false
+    						entitylib.character.RootPart.RotVelocity = Vector3.new(
+    							XToggle.Enabled and Value.Value or originalRotVelocity.X,
+    							YToggle.Enabled and Value.Value or originalRotVelocity.Y,
+    							ZToggle.Enabled and Value.Value or originalRotVelocity.Z
+    						)
+    					elseif Mode.Value == 'CFrame' then
+    						local val = math.rad((tick() * (20 * Value.Value)) % 360)
+    						local x, y, z = entitylib.character.RootPart.CFrame:ToOrientation()
+    						entitylib.character.RootPart.CFrame = CFrame.new(entitylib.character.RootPart.Position)
+    							* CFrame.Angles(
+    								XToggle.Enabled and val or x,
+    								YToggle.Enabled and val or y,
+    								ZToggle.Enabled and val or z
+    							)
+    					elseif AngularVelocity then
+    						AngularVelocity.Parent = entitylib.isAlive and entitylib.character.RootPart
+    						AngularVelocity.MaxTorque = Vector3.new(
+    							XToggle.Enabled and math.huge or 0,
+    							YToggle.Enabled and math.huge or 0,
+    							ZToggle.Enabled and math.huge or 0
+    						)
+    						AngularVelocity.AngularVelocity = Vector3.new(Value.Value, Value.Value, Value.Value)
+    					end
+    				end
+    			end))
+    		else
+    			if entitylib.isAlive and Mode.Value == 'RotVelocity' then
+    				entitylib.character.Humanoid.AutoRotate = true
+    			end
+    			if AngularVelocity then
+    				AngularVelocity.Parent = nil
+    			end
+    		end
+    	end,
+    	Tooltip = 'Makes your character spin around in circles (does not work in first person)',
+    })
+    Mode = SpinBot:CreateDropdown({
+    	Name = 'Mode',
+    	List = { 'CFrame', 'RotVelocity', 'BodyMover' },
+    	Function = function(val)
+    		if AngularVelocity then
+    			AngularVelocity:Destroy()
+    			AngularVelocity = nil
+    		end
+    		AngularVelocity = val == 'BodyMover' and Instance.new('BodyAngularVelocity') or nil
+    	end,
+    })
+    Value = SpinBot:CreateSlider({
+    	Name = 'Speed',
+    	Min = 1,
+    	Max = 100,
+    	Default = 40,
+    })
+    XToggle = SpinBot:CreateToggle({ Name = 'Spin X' })
+    YToggle = SpinBot:CreateToggle({
+    	Name = 'Spin Y',
+    	Default = true,
+    })
+    ZToggle = SpinBot:CreateToggle({ Name = 'Spin Z' })
+end)
+
+run(function()
+    local Swim
+    local terrain = cloneref(workspace:FindFirstChildWhichIsA('Terrain'))
+    local lastpos = Region3.new(Vector3.zero, Vector3.zero)
+
+    Swim = vape.Categories.Blatant:CreateModule({
+    	Name = 'Swim',
+    	Function = function(callback)
+    		if callback then
+    			Swim:Clean(runService.PreSimulation:Connect(function(dt)
+    				if entitylib.isAlive then
+    					local root = entitylib.character.RootPart
+    					local moving = entitylib.character.Humanoid.MoveDirection ~= Vector3.zero
+    					local rootvelo = root.Velocity
+    					local space = inputService:IsKeyDown(Enum.KeyCode.Space)
+
+    					if terrain then
+    						local factor = (moving or space) and Vector3.new(6, 6, 6) or Vector3.new(2, 1, 2)
+    						local pos = root.Position - Vector3.new(0, 1, 0)
+    						local newpos = Region3.new(pos - factor, pos + factor):ExpandToGrid(4)
+    						terrain:ReplaceMaterial(lastpos, 4, Enum.Material.Water, Enum.Material.Air)
+    						terrain:FillRegion(newpos, 4, Enum.Material.Water)
+    						lastpos = newpos
+    					end
+    				end
+    			end))
+    		else
+    			if terrain and lastpos then
+    				terrain:ReplaceMaterial(lastpos, 4, Enum.Material.Water, Enum.Material.Air)
+    			end
+    		end
+    	end,
+    	Tooltip = 'Lets you swim midair',
+    })
+end)
+
+run(function()
+    local TargetStrafe
+    local Targets
+    local SearchRange
+    local StrafeRange
+    local YFactor
+    local rayCheck = RaycastParams.new()
+    rayCheck.RespectCanCollide = true
+    local module, old
+
+    TargetStrafe = vape.Categories.Blatant:CreateModule({
+    	Name = 'Target Strafe',
+    	Function = function(callback)
+    		if callback then
+    			if not module then
+    				local suc = pcall(function()
+    					module = require(lplr.PlayerScripts.PlayerModule).controls
+    				end)
+    				if not suc then
+    					module = {}
+    				end
+    			end
+
+    			old = module.moveFunction
+    			local flymod, ang, oldent = vape.Modules.Fly or { Enabled = false }
+    			module.moveFunction = function(self, vec, face)
+    				local wallcheck = Targets.Walls.Enabled
+    				local ent = not inputService:IsKeyDown(Enum.KeyCode.S)
+    					and entitylib.EntityPosition({
+    						Range = SearchRange.Value,
+    						Wallcheck = wallcheck,
+    						Part = 'RootPart',
+    						Players = Targets.Players.Enabled,
+    						NPCs = Targets.NPCs.Enabled,
+    					})
+
+    				if ent then
+    					local root, targetPos = entitylib.character.RootPart, ent.RootPart.Position
+    					rayCheck.FilterDescendantsInstances = { lplr.Character, gameCamera, ent.Character }
+    					rayCheck.CollisionGroup = root.CollisionGroup
+
+    					if flymod.Enabled or workspace:Raycast(targetPos, Vector3.new(0, -70, 0), rayCheck) then
+    						local factor, localPosition = 0, root.Position
+    						if ent ~= oldent then
+    							ang = math.deg(select(2, CFrame.lookAt(targetPos, localPosition):ToEulerAnglesYXZ()))
+    						end
+    						local yFactor = math.abs(localPosition.Y - targetPos.Y) * (YFactor.Value / 100)
+    						local entityPos = Vector3.new(targetPos.X, localPosition.Y, targetPos.Z)
+    						local newPos = entityPos
+    							+ (CFrame.Angles(0, math.rad(ang), 0).LookVector * (StrafeRange.Value - yFactor))
+    						local startRay, endRay = entityPos, newPos
+
+    						if not wallcheck and workspace:Raycast(targetPos, (localPosition - targetPos), rayCheck) then
+    							startRay, endRay =
+    								entityPos
+    									+ (
+    										CFrame.Angles(0, math.rad(ang), 0).LookVector
+    										* (entityPos - localPosition).Magnitude
+    									),
+    								entityPos
+    						end
+
+    						local ray = workspace:Blockcast(
+    							CFrame.new(startRay),
+    							Vector3.new(1, entitylib.character.HipHeight + (root.Size.Y / 2), 1),
+    							(endRay - startRay),
+    							rayCheck
+    						)
+    						if (localPosition - newPos).Magnitude < 3 or ray then
+    							factor = (8 - math.min((localPosition - newPos).Magnitude, 3))
+    							if ray then
+    								newPos = ray.Position + (ray.Normal * 1.5)
+    								factor = (localPosition - newPos).Magnitude > 3 and 0 or factor
+    							end
+    						end
+
+    						if not flymod.Enabled and not workspace:Raycast(newPos, Vector3.new(0, -70, 0), rayCheck) then
+    							newPos = entityPos
+    							factor = 40
+    						end
+
+    						ang += factor % 360
+    						vec = ((newPos - localPosition) * Vector3.new(1, 0, 1)).Unit
+    						vec = vec == vec and vec or Vector3.zero
+    						TargetStrafeVector = vec
+    					else
+    						ent = nil
+    					end
+    				end
+
+    				TargetStrafeVector = ent and vec or nil
+    				oldent = ent
+    				return old(self, vec, face)
+    			end
+    		else
+    			if module and old then
+    				module.moveFunction = old
+    			end
+    			TargetStrafeVector = nil
+    		end
+    	end,
+    	Tooltip = 'Automatically strafes around the opponent',
+    })
+    Targets = TargetStrafe:CreateTargets({
+    	Players = true,
+    	Walls = true,
+    })
+    SearchRange = TargetStrafe:CreateSlider({
+    	Name = 'Search Range',
+    	Min = 1,
+    	Max = 30,
+    	Default = 24,
+    	Suffix = function(val)
+    		return val == 1 and 'stud' or 'studs'
+    	end,
+    })
+    StrafeRange = TargetStrafe:CreateSlider({
+    	Name = 'Strafe Range',
+    	Min = 1,
+    	Max = 30,
+    	Default = 18,
+    	Suffix = function(val)
+    		return val == 1 and 'stud' or 'studs'
+    	end,
+    })
+    YFactor = TargetStrafe:CreateSlider({
+    	Name = 'Y Factor',
+    	Min = 0,
+    	Max = 100,
+    	Default = 100,
+    	Suffix = '%',
     })
 end)
 
@@ -5366,6 +5849,245 @@ run(function()
 end)
 
 run(function()
+    local GamingChair = { Enabled = false }
+    local Color
+    local wheelpositions = {
+    	Vector3.new(-0.8, -0.6, -0.18),
+    	Vector3.new(0.1, -0.6, -0.88),
+    	Vector3.new(0, -0.6, 0.7),
+    }
+    local chairhighlight
+    local currenttween
+    local movingsound
+    local flyingsound
+    local chairanim
+    local chair
+
+    GamingChair = vape.Categories.Render:CreateModule({
+    	Name = 'Gaming Chair',
+    	Function = function(callback)
+    		if callback then
+    			if vape.ThreadFix then
+    				setthreadidentity(8)
+    			end
+    			chair = Instance.new('MeshPart')
+    			chair.Color = Color3.fromRGB(21, 21, 21)
+    			chair.Size = Vector3.new(2.16, 3.6, 2.3) / Vector3.new(12.37, 20.636, 13.071)
+    			chair.CanCollide = false
+    			chair.Massless = true
+    			chair.MeshId = 'rbxassetid://12972961089'
+    			chair.Material = Enum.Material.SmoothPlastic
+    			chair.Parent = workspace
+    			movingsound = Instance.new('Sound')
+    			--movingsound.SoundId = downloadVapeAsset('vape/assets/ChairRolling.mp3')
+    			movingsound.Volume = 0.4
+    			movingsound.Looped = true
+    			movingsound.Parent = workspace
+    			flyingsound = Instance.new('Sound')
+    			--flyingsound.SoundId = downloadVapeAsset('vape/assets/ChairFlying.mp3')
+    			flyingsound.Volume = 0.4
+    			flyingsound.Looped = true
+    			flyingsound.Parent = workspace
+    			local chairweld = Instance.new('WeldConstraint')
+    			chairweld.Part0 = chair
+    			chairweld.Parent = chair
+    			if entitylib.isAlive then
+    				chair.CFrame = entitylib.character.RootPart.CFrame * CFrame.Angles(0, math.rad(-90), 0)
+    				chairweld.Part1 = entitylib.character.RootPart
+    			end
+    			chairhighlight = Instance.new('Highlight')
+    			chairhighlight.FillTransparency = 1
+    			chairhighlight.OutlineColor = Color3.fromHSV(Color.Hue, Color.Sat, Color.Value)
+    			chairhighlight.DepthMode = Enum.HighlightDepthMode.Occluded
+    			chairhighlight.OutlineTransparency = 0.2
+    			chairhighlight.Parent = chair
+    			local chairarms = Instance.new('MeshPart')
+    			chairarms.Color = chair.Color
+    			chairarms.Size = Vector3.new(1.39, 1.345, 2.75) / Vector3.new(97.13, 136.216, 234.031)
+    			chairarms.CFrame = chair.CFrame * CFrame.new(-0.169, -1.129, -0.013)
+    			chairarms.MeshId = 'rbxassetid://12972673898'
+    			chairarms.CanCollide = false
+    			chairarms.Parent = chair
+    			local chairarmsweld = Instance.new('WeldConstraint')
+    			chairarmsweld.Part0 = chairarms
+    			chairarmsweld.Part1 = chair
+    			chairarmsweld.Parent = chair
+    			local chairlegs = Instance.new('MeshPart')
+    			chairlegs.Color = chair.Color
+    			chairlegs.Name = 'Legs'
+    			chairlegs.Size = Vector3.new(1.8, 1.2, 1.8) / Vector3.new(10.432, 8.105, 9.488)
+    			chairlegs.CFrame = chair.CFrame * CFrame.new(0.047, -2.324, 0)
+    			chairlegs.MeshId = 'rbxassetid://13003181606'
+    			chairlegs.CanCollide = false
+    			chairlegs.Parent = chair
+    			local chairfan = Instance.new('MeshPart')
+    			chairfan.Color = chair.Color
+    			chairfan.Name = 'Fan'
+    			chairfan.Size = Vector3.zero
+    			chairfan.CFrame = chair.CFrame * CFrame.new(0, -1.873, 0)
+    			chairfan.MeshId = 'rbxassetid://13004977292'
+    			chairfan.CanCollide = false
+    			chairfan.Parent = chair
+    			local trails = {}
+    			for _, v in wheelpositions do
+    				local attachment = Instance.new('Attachment')
+    				attachment.Position = v
+    				attachment.Parent = chairlegs
+    				local attachment2 = Instance.new('Attachment')
+    				attachment2.Position = v + Vector3.new(0, 0, 0.18)
+    				attachment2.Parent = chairlegs
+    				local trail = Instance.new('Trail')
+    				trail.Texture = 'http://www.roblox.com/asset/?id=13005168530'
+    				trail.TextureMode = Enum.TextureMode.Static
+    				trail.Transparency = NumberSequence.new(0.5)
+    				trail.Color = ColorSequence.new(Color3.new(0.5, 0.5, 0.5))
+    				trail.Attachment0 = attachment
+    				trail.Attachment1 = attachment2
+    				trail.Lifetime = 20
+    				trail.MaxLength = 60
+    				trail.MinLength = 0.1
+    				trail.Parent = chairlegs
+    				table.insert(trails, trail)
+    			end
+    			GamingChair:Clean(chair)
+    			GamingChair:Clean(movingsound)
+    			GamingChair:Clean(flyingsound)
+    			chairanim = { Stop = function() end }
+    			local oldmoving = false
+    			local oldflying = false
+    			repeat
+    				if entitylib.isAlive and entitylib.character.Humanoid.Health > 0 then
+    					if not chairanim.IsPlaying then
+    						local temp2 = Instance.new('Animation')
+    						temp2.AnimationId = entitylib.character.Humanoid.RigType == Enum.HumanoidRigType.R15
+    								and 'http://www.roblox.com/asset/?id=2506281703'
+    							or 'http://www.roblox.com/asset/?id=178130996'
+    						chairanim = entitylib.character.Humanoid:LoadAnimation(temp2)
+    						chairanim.Priority = Enum.AnimationPriority.Movement
+    						chairanim.Looped = true
+    						chairanim:Play()
+    					end
+    					chair.CFrame = entitylib.character.RootPart.CFrame * CFrame.Angles(0, math.rad(-90), 0)
+    					chairweld.Part1 = entitylib.character.RootPart
+    					chairlegs.Velocity = Vector3.zero
+    					chairlegs.CFrame = chair.CFrame * CFrame.new(0.047, -2.324, 0)
+    					chairfan.Velocity = Vector3.zero
+    					chairfan.CFrame = chair.CFrame
+    						* CFrame.new(0.047, -1.873, 0)
+    						* CFrame.Angles(0, math.rad(tick() * 180 % 360), math.rad(180))
+    					local moving = entitylib.character.Humanoid:GetState() == Enum.HumanoidStateType.Running
+    						and entitylib.character.Humanoid.MoveDirection ~= Vector3.zero
+    					local flying = vape.Modules.Fly and vape.Modules.Fly.Enabled
+    						or vape.Modules.LongJump and vape.Modules.LongJump.Enabled
+    						or vape.Modules.InfiniteFly and vape.Modules.InfiniteFly.Enabled
+    					if movingsound.TimePosition > 1.9 then
+    						movingsound.TimePosition = 0.2
+    					end
+    					movingsound.PlaybackSpeed = (entitylib.character.RootPart.Velocity * Vector3.new(1, 0, 1)).Magnitude
+    						/ 16
+    					for _, v in trails do
+    						v.Enabled = not flying and moving
+    						v.Color =
+    							ColorSequence.new(movingsound.PlaybackSpeed > 1.5 and Color3.new(1, 0.5, 0) or Color3.new())
+    					end
+    					if moving ~= oldmoving then
+    						if movingsound.IsPlaying then
+    							if not moving then
+    								movingsound:Stop()
+    							end
+    						else
+    							if not flying and moving then
+    								movingsound:Play()
+    							end
+    						end
+    						oldmoving = moving
+    					end
+    					if flying ~= oldflying then
+    						if flying then
+    							if movingsound.IsPlaying then
+    								movingsound:Stop()
+    							end
+    							if not flyingsound.IsPlaying then
+    								flyingsound:Play()
+    							end
+    							if currenttween then
+    								currenttween:Cancel()
+    							end
+    							tween = tweenService:Create(chairlegs, TweenInfo.new(0.15), {
+    								Size = Vector3.zero,
+    							})
+    							tween.Completed:Connect(function(state)
+    								if state == Enum.PlaybackState.Completed then
+    									chairfan.Transparency = 0
+    									chairlegs.Transparency = 1
+    									tween = tweenService:Create(chairfan, TweenInfo.new(0.15), {
+    										Size = Vector3.new(1.534, 0.328, 1.537)
+    											/ Vector3.new(791.138, 168.824, 792.027),
+    									})
+    									tween:Play()
+    								end
+    							end)
+    							tween:Play()
+    						else
+    							if flyingsound.IsPlaying then
+    								flyingsound:Stop()
+    							end
+    							if not movingsound.IsPlaying and moving then
+    								movingsound:Play()
+    							end
+    							if currenttween then
+    								currenttween:Cancel()
+    							end
+    							tween = tweenService:Create(chairfan, TweenInfo.new(0.15), {
+    								Size = Vector3.zero,
+    							})
+    							tween.Completed:Connect(function(state)
+    								if state == Enum.PlaybackState.Completed then
+    									chairfan.Transparency = 1
+    									chairlegs.Transparency = 0
+    									tween = tweenService:Create(chairlegs, TweenInfo.new(0.15), {
+    										Size = Vector3.new(1.8, 1.2, 1.8) / Vector3.new(10.432, 8.105, 9.488),
+    									})
+    									tween:Play()
+    								end
+    							end)
+    							tween:Play()
+    						end
+    						oldflying = flying
+    					end
+    				else
+    					chair.Anchored = true
+    					chairlegs.Anchored = true
+    					chairfan.Anchored = true
+    					repeat
+    						task.wait()
+    					until entitylib.isAlive and entitylib.character.Humanoid.Health > 0
+    					chair.Anchored = false
+    					chairlegs.Anchored = false
+    					chairfan.Anchored = false
+    					chairanim:Stop()
+    				end
+    				task.wait()
+    			until not GamingChair.Enabled
+    		else
+    			if chairanim then
+    				chairanim:Stop()
+    			end
+    		end
+    	end,
+    	Tooltip = 'Sit in the best gaming chair known to mankind.',
+    })
+    Color = GamingChair:CreateColorSlider({
+    	Name = 'Color',
+    	Function = function(h, s, v)
+    		if chairhighlight then
+    			chairhighlight.OutlineColor = Color3.fromHSV(h, s, v)
+    		end
+    	end,
+    })
+end)
+
+run(function()
     local Health
 
     Health = vape.Categories.Render:CreateModule({
@@ -5869,6 +6591,130 @@ run(function()
     	DefaultMax = 64,
     	Darker = true,
     	Visible = false,
+    })
+end)
+
+run(function()
+    local PlayerModel
+    local Scale
+    local Local
+    local Mesh
+    local Texture
+    local Rots = {}
+    local models = {}
+
+    local function addMesh(ent)
+    	if vape.ThreadFix then
+    		setthreadidentity(8)
+    	end
+    	local root = ent.RootPart
+    	local part = Instance.new('Part')
+    	part.Size = Vector3.new(3, 3, 3)
+    	part.CFrame = root.CFrame * CFrame.Angles(math.rad(Rots[1].Value), math.rad(Rots[2].Value), math.rad(Rots[3].Value))
+    	part.CanCollide = false
+    	part.CanQuery = false
+    	part.Massless = true
+    	part.Parent = workspace
+    	local meshd = Instance.new('SpecialMesh')
+    	meshd.MeshId = Mesh.Value
+    	meshd.TextureId = Texture.Value
+    	meshd.Scale = Vector3.one * Scale.Value
+    	meshd.Parent = part
+    	local weld = Instance.new('WeldConstraint')
+    	weld.Part0 = part
+    	weld.Part1 = root
+    	weld.Parent = part
+    	models[root] = part
+    end
+
+    local function removeMesh(ent)
+    	if models[ent.RootPart] then
+    		models[ent.RootPart]:Destroy()
+    		models[ent.RootPart] = nil
+    	end
+    end
+
+    PlayerModel = vape.Categories.Render:CreateModule({
+    	Name = 'Player Model',
+    	Function = function(callback)
+    		if callback then
+    			if Local.Enabled then
+    				PlayerModel:Clean(entitylib.Events.LocalAdded:Connect(addMesh))
+    				PlayerModel:Clean(entitylib.Events.LocalRemoved:Connect(removeMesh))
+    				if entitylib.isAlive then
+    					task.spawn(addMesh, entitylib.character)
+    				end
+    			end
+    			PlayerModel:Clean(entitylib.Events.EntityAdded:Connect(addMesh))
+    			PlayerModel:Clean(entitylib.Events.EntityRemoved:Connect(removeMesh))
+    			for _, ent in entitylib.List do
+    				task.spawn(addMesh, ent)
+    			end
+    		else
+    			for _, part in models do
+    				part:Destroy()
+    			end
+    			table.clear(models)
+    		end
+    	end,
+    	Tooltip = 'Change the player models to a Mesh',
+    })
+    Scale = PlayerModel:CreateSlider({
+    	Name = 'Scale',
+    	Min = 0,
+    	Max = 2,
+    	Default = 1,
+    	Decimal = 100,
+    	Function = function(val)
+    		for _, part in models do
+    			part.Mesh.Scale = Vector3.one * val
+    		end
+    	end,
+    })
+    for _, name in { 'Rotation X', 'Rotation Y', 'Rotation Z' } do
+    	table.insert(
+    		Rots,
+    		PlayerModel:CreateSlider({
+    			Name = name,
+    			Min = 0,
+    			Max = 360,
+    			Function = function(val)
+    				for root, part in models do
+    					part.WeldConstraint.Enabled = false
+    					part.CFrame = root.CFrame
+    						* CFrame.Angles(math.rad(Rots[1].Value), math.rad(Rots[2].Value), math.rad(Rots[3].Value))
+    					part.WeldConstraint.Enabled = true
+    				end
+    			end,
+    		})
+    	)
+    end
+    Local = PlayerModel:CreateToggle({
+    	Name = 'Local',
+    	Function = function()
+    		if PlayerModel.Enabled then
+    			PlayerModel:Toggle()
+    			PlayerModel:Toggle()
+    		end
+    	end,
+    })
+    Mesh = PlayerModel:CreateTextBox({
+    	Name = 'Mesh',
+    	Placeholder = 'mesh id',
+    	Function = function()
+    		for _, part in models do
+    			part.Mesh.MeshId = Mesh.Value
+    		end
+    	end,
+    })
+    Texture = PlayerModel:CreateTextBox({
+    	Name = 'Texture',
+    	Placeholder = 'texture id',
+    	Function = function()
+    		for _, part in models do
+    			part.Mesh.TextureId = Texture.Value
+    		end
+    	end,
     })
 end)
 
@@ -6519,6 +7365,107 @@ run(function()
 end)
 
 run(function()
+    local ChatSpammer
+    local Lines
+    local Mode
+    local Delay
+    local Hide
+    local oldchat
+
+    ChatSpammer = vape.Categories.Utility:CreateModule({
+    	Name = 'Chat Spammer',
+    	Function = function(callback)
+    		if callback then
+    			if textChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+    				if Hide.Enabled and coreGui:FindFirstChild('ExperienceChat') then
+    					ChatSpammer:Clean(
+    						coreGui.ExperienceChat
+    							:FindFirstChild('RCTScrollContentView', true).ChildAdded
+    							:Connect(function(msg)
+    								if
+    									msg.Name:sub(1, 2) == '0-'
+    									and msg.ContentText == 'You must wait before sending another message.'
+    								then
+    									msg.Visible = false
+    								end
+    							end)
+    					)
+    				end
+    			elseif replicatedStorage:FindFirstChild('DefaultChatSystemChatEvents') then
+    				if Hide.Enabled then
+    					oldchat = hookfunction(
+    						getconnections(replicatedStorage.DefaultChatSystemChatEvents.OnNewSystemMessage.OnClientEvent)[1].Function,
+    						function(data, ...)
+    							if data.Message:find('ChatFloodDetector') then
+    								return
+    							end
+    							return oldchat(data, ...)
+    						end
+    					)
+    				end
+    			else
+    				notif('ChatSpammer', 'unsupported chat', 5, 'warning')
+    				ChatSpammer:Toggle()
+    				return
+    			end
+
+    			local ind = 1
+    			repeat
+    				local message = (
+    					#Lines.ListEnabled > 0 and Lines.ListEnabled[math.random(1, #Lines.ListEnabled)] or 'vxpe on top'
+    				)
+    				if Mode.Value == 'Order' and #Lines.ListEnabled > 0 then
+    					message = Lines.ListEnabled[ind] or Lines.ListEnabled[1]
+    					ind = (ind % #Lines.ListEnabled) + 1
+    				end
+
+    				if textChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+    					textChatService.ChatInputBarConfiguration.TargetTextChannel:SendAsync(message)
+    				else
+    					replicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(message, 'All')
+    				end
+
+    				task.wait(Delay.Value)
+    			until not ChatSpammer.Enabled
+    		else
+    			if oldchat then
+    				hookfunction(
+    					getconnections(replicatedStorage.DefaultChatSystemChatEvents.OnNewSystemMessage.OnClientEvent)[1].Function,
+    					oldchat
+    				)
+    			end
+    		end
+    	end,
+    	Tooltip = 'Automatically types in chat',
+    })
+    Lines = ChatSpammer:CreateTextList({ Name = 'Lines' })
+    Mode = ChatSpammer:CreateDropdown({
+    	Name = 'Mode',
+    	List = { 'Random', 'Order' },
+    })
+    Delay = ChatSpammer:CreateSlider({
+    	Name = 'Delay',
+    	Min = 0.1,
+    	Max = 10,
+    	Default = 1,
+    	Decimal = 10,
+    	Suffix = function(val)
+    		return val == 1 and 'second' or 'seconds'
+    	end,
+    })
+    Hide = ChatSpammer:CreateToggle({
+    	Name = 'Hide Flood Message',
+    	Default = true,
+    	Function = function()
+    		if ChatSpammer.Enabled then
+    			ChatSpammer:Toggle()
+    			ChatSpammer:Toggle()
+    		end
+    	end,
+    })
+end)
+
+run(function()
     local Disabler
 
     local function characterAdded(char)
@@ -6826,6 +7773,49 @@ run(function()
     		end
     	end,
     	Tooltip = 'Leaves your current party',
+    })
+end)
+
+run(function()
+    local StateSpoofer
+    local State
+
+    local hook
+
+    StateSpoofer = vape.Categories.Utility:CreateModule({
+    	Name = 'State Spoofer',
+    	Function = function(callback)
+    		if callback then
+    			if not rakNetCheck('StateSpoofer') then
+    				StateSpoofer:Toggle()
+    				return
+    			end
+
+    			hook = function(packet)
+    				if packet.AsArray[1] == 0x1b then
+    					local data = packet.AsBuffer
+    					buffer.writeu8(data, 25, Enum.HumanoidStateType[State.Value].Value + 32)
+    					packet:SetData(data)
+    				end
+    			end
+
+    			raknet.add_send_hook(hook)
+    		elseif hook then
+    			raknet.remove_send_hook(hook)
+    			hook = nil
+    		end
+    	end,
+    	Tooltip = 'Spoof humanoid states on the server.',
+    })
+    local states = {}
+    for _, v in Enum.HumanoidStateType:GetEnumItems() do
+    	if v.Name ~= 'None' then
+    		table.insert(states, v.Name)
+    	end
+    end
+    State = StateSpoofer:CreateDropdown({
+    	Name = 'Humanoid State',
+    	List = states,
     })
 end)
 
@@ -8679,6 +9669,188 @@ run(function()
     	end,
     })
 end)
+run(function()
+    local MannyReaper
+    local Color
+    local Size
+    local Thickness
+    local Gap
+    local Dot
+    local Outline
+    local oldShowCrosshair
+
+    local lines = {}
+
+    local function createCrosshair()
+        for _, v in lines do
+            pcall(function() v:Remove() end)
+        end
+        table.clear(lines)
+
+        for i = 1, 10 do
+            local line = Drawing.new('Line')
+            line.Visible = false
+            line.ZIndex = 5
+            table.insert(lines, line)
+        end
+    end
+
+    local function updateCrosshair()
+        if not MannyReaper.Enabled then return end
+        inputService.MouseIconEnabled = false
+        local center = inputService:GetMouseLocation()
+        local size = Size.Value
+        local gap = Gap.Value
+        local thickness = Thickness.Value
+        local color = Color3.fromHSV(Color.Hue, Color.Sat, Color.Value)
+        local outlinecolor = Color3.new(0, 0, 0)
+
+        lines[1].From = Vector2.new(center.X, center.Y - gap)
+        lines[1].To = Vector2.new(center.X, center.Y - gap - size)
+        lines[1].Color = color
+        lines[1].Thickness = thickness
+        lines[1].Visible = true
+
+        lines[2].From = Vector2.new(center.X, center.Y + gap)
+        lines[2].To = Vector2.new(center.X, center.Y + gap + size)
+        lines[2].Color = color
+        lines[2].Thickness = thickness
+        lines[2].Visible = true
+
+        lines[3].From = Vector2.new(center.X - gap, center.Y)
+        lines[3].To = Vector2.new(center.X - gap - size, center.Y)
+        lines[3].Color = color
+        lines[3].Thickness = thickness
+        lines[3].Visible = true
+
+        lines[4].From = Vector2.new(center.X + gap, center.Y)
+        lines[4].To = Vector2.new(center.X + gap + size, center.Y)
+        lines[4].Color = color
+        lines[4].Thickness = thickness
+        lines[4].Visible = true
+
+        if Outline.Enabled then
+            lines[5].From = Vector2.new(center.X, center.Y - gap)
+            lines[5].To = Vector2.new(center.X, center.Y - gap - size)
+            lines[5].Color = outlinecolor
+            lines[5].Thickness = thickness + 2
+            lines[5].Visible = true
+
+            lines[6].From = Vector2.new(center.X, center.Y + gap)
+            lines[6].To = Vector2.new(center.X, center.Y + gap + size)
+            lines[6].Color = outlinecolor
+            lines[6].Thickness = thickness + 2
+            lines[6].Visible = true
+
+            lines[7].From = Vector2.new(center.X - gap, center.Y)
+            lines[7].To = Vector2.new(center.X - gap - size, center.Y)
+            lines[7].Color = outlinecolor
+            lines[7].Thickness = thickness + 2
+            lines[7].Visible = true
+
+            lines[8].From = Vector2.new(center.X + gap, center.Y)
+            lines[8].To = Vector2.new(center.X + gap + size, center.Y)
+            lines[8].Color = outlinecolor
+            lines[8].Thickness = thickness + 2
+            lines[8].Visible = true
+        else
+            for i = 5, 8 do
+                lines[i].Visible = false
+            end
+        end
+
+        if Dot.Enabled then
+            lines[9].From = Vector2.new(center.X - 1, center.Y)
+            lines[9].To = Vector2.new(center.X + 1, center.Y)
+            lines[9].Color = color
+            lines[9].Thickness = thickness
+            lines[9].Visible = true
+        else
+            lines[9].Visible = false
+        end
+    end
+
+    MannyReaper = vape.Categories.Render:CreateModule({
+        Name = 'Manny Reaper',
+        Function = function(callback)
+            if callback then
+                createCrosshair()
+                pcall(function()
+                    oldShowCrosshair = bedwars.ViewmodelController.showCrosshair
+                    bedwars.ViewmodelController.showCrosshair = function() end
+                    bedwars.ViewmodelController:hideCrosshair()
+                end)
+                MannyReaper:Clean(runService.RenderStepped:Connect(updateCrosshair))
+            else
+                for _, v in lines do
+                    pcall(function() v:Remove() end)
+                end
+                table.clear(lines)
+                inputService.MouseIconEnabled = true
+                pcall(function()
+                    if oldShowCrosshair then
+                        bedwars.ViewmodelController.showCrosshair = oldShowCrosshair
+                        oldShowCrosshair = nil
+                        bedwars.ViewmodelController:showCrosshair()
+                    end
+                end)
+            end
+        end,
+        Tooltip = 'Custom crosshair',
+    })
+
+    Color = MannyReaper:CreateColorSlider({
+        Name = 'Color',
+        DefaultHue = 0.52,
+        DefaultSat = 0.8,
+        DefaultValue = 1,
+        Function = function()
+            updateCrosshair()
+        end,
+    })
+    Size = MannyReaper:CreateSlider({
+        Name = 'Size',
+        Min = 1,
+        Max = 30,
+        Default = 6,
+        Function = function()
+            updateCrosshair()
+        end,
+    })
+    Thickness = MannyReaper:CreateSlider({
+        Name = 'Thickness',
+        Min = 1,
+        Max = 10,
+        Default = 1,
+        Function = function()
+            updateCrosshair()
+        end,
+    })
+    Gap = MannyReaper:CreateSlider({
+        Name = 'Gap',
+        Min = 0,
+        Max = 20,
+        Default = 3,
+        Function = function()
+            updateCrosshair()
+        end,
+    })
+    Dot = MannyReaper:CreateToggle({
+        Name = 'Center Dot',
+        Default = false,
+        Function = function()
+            updateCrosshair()
+        end,
+    })
+    Outline = MannyReaper:CreateToggle({
+        Name = 'Outline',
+        Default = true,
+        Function = function()
+            updateCrosshair()
+        end,
+    })
+end)
+
 run(function()
     local YTModule
     local yt = loadstring(downloadFile('autoclicker-v4/libraries/youtube.lua'), 'youtube')()
