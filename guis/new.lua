@@ -121,7 +121,7 @@ local getcustomassets = {
 	['autoclicker-v4/assets/new/textv4.png'] = 'rbxassetid://14368357095',
 	['autoclicker-v4/assets/new/textvape.png'] = 'rbxassetid://14368358200',
 	['autoclicker-v4/assets/new/utilityicon.png'] = 'rbxassetid://14368359107',
-	['autoclicker-v4/assets/new/vape.png'] = 'rbxassetid://14373395239',
+	['autoclicker-v4/assets/new/vape.png'] = '',
 	['autoclicker-v4/assets/new/warning.png'] = 'rbxassetid://14368361552',
 	['autoclicker-v4/assets/new/worldicon.png'] = 'rbxassetid://14368362492'
 }
@@ -321,15 +321,16 @@ local function createMobileButton(buttonapi, position)
 end
 
 local function downloadFile(path, func)
-	if not isfile(path) then
+	local isBinary = not path:find('.lua')
+	if isBinary or not isfile(path) then
 		createDownloader(path)
 		local suc, res = pcall(function()
-			return game:HttpGet('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/'..readfile('autoclicker-v4/profiles/commit.txt')..'/'..select(1, path:gsub('autoclicker%-v4/', '')), true)
+			return game:HttpGet('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/'..readfile('autoclicker-v4/profiles/commit.txt')..'/'..select(1, path:gsub('autoclicker%-v4/', ''))..'?t='..tostring(tick()), true)
 		end)
 		if not suc or res == '404: Not Found' then
 			error(res)
 		end
-		if path:find('.lua') then
+		if not isBinary then
 			res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.\n'..res
 		end
 		writefile(path, res)
@@ -5714,15 +5715,15 @@ function mainapi:Load(skipgui, profile)
 		end
 		local button = Instance.new('TextButton')
 		button.LayoutOrder = -1
-		button.Size = UDim2.fromOffset(32, 32)
-		button.Position = UDim2.new(1, -90, 0, 4)
+		button.Size = UDim2.fromOffset(40, 40)
+		button.Position = UDim2.new(1, -95, 0, 0)
 		button.BackgroundColor3 = Color3.new()
-		button.BackgroundTransparency = hide and 1 or 0.35
+		button.BackgroundTransparency = 1
 		button.Text = ''
 		button.Parent = game.GameId == 2619619496 and cloneref(game:GetService('Players')).LocalPlayer.PlayerGui.TopBarAppGui.TopBarApp or gui
 		local image = Instance.new('ImageLabel')
 		image.AnchorPoint = Vector2.new(0.5, 0.5)
-		image.Size = UDim2.fromOffset(22, 22)
+		image.Size = UDim2.fromOffset(38, 38)
 		image.Position = UDim2.fromScale(0.5, 0.5)
 		image.BackgroundTransparency = 1
 		image.Image = getcustomasset('autoclicker-v4/assets/new/vape.png')
