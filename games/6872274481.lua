@@ -453,6 +453,19 @@ local function switchItem(tool, delayTime)
 end
 getgenv().switchItem = switchItem
 
+local function getFunctionRange(func)
+	local last = false
+	for _, v in debug.getconstants(func) do
+		if v == 'maxActivationDistance' then
+			last = true
+		elseif last then
+			return v and typeof(v) == 'number' and v or nil
+		end
+	end
+	return nil
+end
+getgenv().getFunctionRange = getFunctionRange
+
 local function waitForChildOfType(obj, name, timeout, prop)
 	local check, returned = tick() + timeout, nil
 	repeat
