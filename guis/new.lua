@@ -122,6 +122,7 @@ local getcustomassets = {
 	['autoclicker-v4/assets/new/textvape.png'] = 'rbxassetid://14368358200',
 	['autoclicker-v4/assets/new/utilityicon.png'] = 'rbxassetid://14368359107',
 	['autoclicker-v4/assets/new/vape.png'] = '',
+	['autoclicker-v4/assets/new/logo.png'] = '',
 	['autoclicker-v4/assets/new/warning.png'] = 'rbxassetid://14368361552',
 	['autoclicker-v4/assets/new/worldicon.png'] = 'rbxassetid://14368362492'
 }
@@ -2506,17 +2507,28 @@ function mainapi:CreateGUI()
 	addBlur(window)
 	addCorner(window)
 	makeDraggable(window)
+	local logoIcon = Instance.new('ImageLabel')
+	logoIcon.Name = 'LogoIcon'
+	logoIcon.Size = UDim2.fromOffset(30, 30)
+	logoIcon.Position = UDim2.fromOffset(5, 4)
+	logoIcon.BackgroundTransparency = 1
+	logoIcon.BorderSizePixel = 0
+	logoIcon.ScaleType = Enum.ScaleType.Fit
+	logoIcon.Image = getcustomasset('autoclicker-v4/assets/new/logo.png')
+	logoIcon.Parent = window
 	local logo = Instance.new('TextLabel')
 	logo.Name = 'VapeLogo'
-	logo.Size = UDim2.fromOffset(160, 20)
-	logo.Position = UDim2.fromOffset(11, 8)
+	logo.Size = UDim2.fromOffset(130, 20)
+	logo.Position = UDim2.fromOffset(39, 9)
 	logo.BackgroundTransparency = 1
 	logo.Text = 'AUTOCLICKER V4'
-	logo.TextColor3 = Color3.fromRGB(255, 133, 200)
+	logo.TextColor3 = Color3.fromRGB(255, 105, 180)
 	logo.TextXAlignment = Enum.TextXAlignment.Left
 	logo.TextYAlignment = Enum.TextYAlignment.Center
-	logo.TextSize = 16
-	logo.FontFace = Font.fromEnum(Enum.Font.FredokaOne)
+	logo.TextSize = 14
+	logo.TextStrokeColor3 = Color3.fromRGB(60, 0, 30)
+	logo.TextStrokeTransparency = 0.4
+	logo.FontFace = Font.fromEnum(Enum.Font.GothamBlack)
 	logo.Parent = window
 	local children = Instance.new('Frame')
 	children.Name = 'Children'
