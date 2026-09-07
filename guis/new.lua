@@ -5716,17 +5716,17 @@ function mainapi:Load(skipgui, profile)
 		button.LayoutOrder = -1
 		button.Size = UDim2.fromOffset(32, 32)
 		button.Position = UDim2.new(1, -90, 0, 4)
-		button.BackgroundColor3 = Color3.fromRGB(255, 32, 140)
-		button.BackgroundTransparency = hide and 1 or 0
-		button.Text = 'V4'
-		button.TextColor3 = Color3.new(1, 1, 1)
-		button.TextTransparency = hide and 1 or 0
-		button.TextSize = 16
-		button.FontFace = Font.fromEnum(Enum.Font.GothamBlack)
+		button.BackgroundColor3 = Color3.new()
+		button.BackgroundTransparency = hide and 1 or 0.35
+		button.Text = ''
 		button.Parent = game.GameId == 2619619496 and cloneref(game:GetService('Players')).LocalPlayer.PlayerGui.TopBarAppGui.TopBarApp or gui
-		local image = Instance.new('Frame')
-		image.Size = UDim2.fromOffset(0, 0)
+		local image = Instance.new('ImageLabel')
+		image.AnchorPoint = Vector2.new(0.5, 0.5)
+		image.Size = UDim2.fromOffset(22, 22)
+		image.Position = UDim2.fromScale(0.5, 0.5)
 		image.BackgroundTransparency = 1
+		image.Image = getcustomasset('autoclicker-v4/assets/new/vape.png')
+		image.ImageTransparency = hide and 1 or 0
 		image.Parent = button
 		local buttoncorner = Instance.new('UICorner')
 		buttoncorner.Parent = button
@@ -5754,8 +5754,8 @@ function mainapi:Load(skipgui, profile)
 				Name = 'Hide catvape button',
 				Default = hide or false,
 				Function = function(call)
-					button.BackgroundTransparency = call and 1 or 0
-					button.TextTransparency = call and 1 or 0
+					button.BackgroundTransparency = call and 1 or 0.35
+					image.ImageTransparency = call and 1 or 0
 					writefile('autoclicker-v4/profiles/hide.txt', tostring(call))
 				end
 			})
