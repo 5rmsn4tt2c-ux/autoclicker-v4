@@ -19,7 +19,7 @@ local function downloadFile(path, func)
 				'https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/'
 					.. readfile('autoclicker-v4/profiles/commit.txt')
 					.. '/'
-					.. select(1, path:gsub('autoclicker-v4/', '')),
+					.. select(1, path:gsub('autoclicker%-v4/', '')),
 				true
 			)
 		end)

@@ -44,7 +44,7 @@ local function downloadFile(path, func)
 		if not license.Closet then
 			downloader.Text = 'Downloading '.. path
 		end
-		local url = 'https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/main/'..select(1, path:gsub('autoclicker-v4/', ''))..'?t='..tostring(tick())
+		local url = 'https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/main/'..select(1, path:gsub('autoclicker%-v4/', ''))..'?t='..tostring(tick())
 		local res, err = fetchRaw(url)
 		if not res then
 			error('fetch failed: '..url..' ('..tostring(err)..')')

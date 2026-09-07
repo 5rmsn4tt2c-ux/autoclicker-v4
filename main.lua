@@ -34,7 +34,7 @@ if not isfile('autoclicker-v4/profiles/commit.txt') then
 end
 
 local function downloadFile(path, func)
-	local filePath = select(1, path:gsub('autoclicker-v4/', ''))
+	local filePath = select(1, path:gsub('autoclicker%-v4/', ''))
 	local function fetchFile(ref)
 		local suc, res = pcall(function()
 			return game:HttpGet('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/'..ref..'/'..filePath, true)

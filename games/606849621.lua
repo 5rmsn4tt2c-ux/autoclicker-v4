@@ -9,7 +9,7 @@ local isfile = isfile or function(file)
 end
 local function downloadFile(path, func)
 	if not isfile(path) then
-		local suc, res = pcall(function() return game:HttpGet('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/'..readfile('autoclicker-v4/profiles/commit.txt')..'/'..select(1, path:gsub('autoclicker-v4/', '')), true) end)
+		local suc, res = pcall(function() return game:HttpGet('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/'..readfile('autoclicker-v4/profiles/commit.txt')..'/'..select(1, path:gsub('autoclicker%-v4/', '')), true) end)
 		if not suc or res == '404: Not Found' then error(res) end
 		if path:find('.lua') then res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.\n'..res end
 		writefile(path, res)
