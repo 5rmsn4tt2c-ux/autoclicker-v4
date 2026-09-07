@@ -37,7 +37,7 @@ local function downloadFile(path, func)
 	local filePath = select(1, path:gsub('autoclicker%-v4/', ''))
 	local function fetchFile(ref)
 		local suc, res = pcall(function()
-			return game:HttpGet('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/'..ref..'/'..filePath, true)
+			return game:HttpGet('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/'..ref..'/'..filePath..'?t='..tostring(tick()), true)
 		end)
 		if suc and res ~= '404: Not Found' then return res end
 		return nil
