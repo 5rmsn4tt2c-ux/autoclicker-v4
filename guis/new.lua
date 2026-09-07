@@ -3115,9 +3115,9 @@ function mainapi:CreateGUI()
 		local optionapi = {
 			Type = 'GUISlider',
 			Notch = 4,
-			Hue = 0,
-			Sat = 0,
-			Value = 0,
+			Hue = 0.46,
+			Sat = 0.96,
+			Value = 0.52,
 			Rainbow = false,
 			CustomColor = false
 		}
