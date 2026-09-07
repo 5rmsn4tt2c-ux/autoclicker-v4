@@ -7171,7 +7171,7 @@ function mainapi:UpdateGUI(hue, sat, val, default)
 	for i, v in mainapi.Categories do
 		if i == 'Main' then
 			if v.Object.VapeLogo:IsA('TextLabel') then
-				v.Object.VapeLogo.TextColor3 = Color3.fromHSV(hue, sat, val)
+				v.Object.VapeLogo.TextColor3 = Color3.fromRGB(255, 105, 180)
 			elseif v.Object.VapeLogo:FindFirstChild('V4Logo') then
 				v.Object.VapeLogo.V4Logo.ImageColor3 = Color3.fromHSV(hue, sat, val)
 			end
