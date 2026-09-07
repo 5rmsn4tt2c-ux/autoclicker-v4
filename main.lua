@@ -42,18 +42,30 @@ local function downloadFile(path, func)
 		if suc and res ~= '404: Not Found' then return res end
 		return nil
 	end
-	local commit = (isfile('autoclicker-v4/profiles/commit.txt') and readfile('autoclicker-v4/profiles/commit.txt')) or 'main'
-	local res = fetchFile(commit)
-	if not res and commit ~= 'main' then
-		res = fetchFile('main')
+	if not isfile(path) then
+		local commit = (isfile('autoclicker-v4/profiles/commit.txt') and readfile('autoclicker-v4/profiles/commit.txt')) or 'main'
+		local res = fetchFile(commit)
+		if not res and commit ~= 'main' then
+			res = fetchFile('main')
+		end
+		if not res then
+			error('404: Not Found ('..filePath..')')
+		end
+		if path:find('.lua') then
+			res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.\n'..res
+		end
+		writefile(path, res)
+	else
+		local content = readfile(path)
+		if not content:find('--This watermark') then
+			local commit = (isfile('autoclicker-v4/profiles/commit.txt') and readfile('autoclicker-v4/profiles/commit.txt')) or 'main'
+			local res = fetchFile(commit) or fetchFile('main')
+			if res then
+				res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.\n'..res
+				writefile(path, res)
+			end
+		end
 	end
-	if not res then
-		error('404: Not Found ('..filePath..')')
-	end
-	if path:find('.lua') then
-		res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.\n'..res
-	end
-	writefile(path, res)
 	return (func or readfile)(path)
 end
 

@@ -40,19 +40,21 @@ local function fetchRaw(url)
 end
 
 local function downloadFile(path, func)
-	if not license.Closet then
-		downloader.Text = 'Downloading '.. path
+	if not isfile(path) then
+		if not license.Closet then
+			downloader.Text = 'Downloading '.. path
+		end
+		local url = 'https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/main/'..select(1, path:gsub('autoclicker%-v4/', ''))..'?t='..tostring(tick())
+		local res, err = fetchRaw(url)
+		if not res then
+			error('fetch failed: '..url..' ('..tostring(err)..')')
+		end
+		if path:find('.lua') then
+			res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.\n'..res
+		end
+		writefile(path, res)
+		downloader.Text = ''
 	end
-	local url = 'https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/main/'..select(1, path:gsub('autoclicker%-v4/', ''))..'?t='..tostring(tick())
-	local res, err = fetchRaw(url)
-	if not res then
-		error('fetch failed: '..url..' ('..tostring(err)..')')
-	end
-	if path:find('.lua') then
-		res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.\n'..res
-	end
-	writefile(path, res)
-	downloader.Text = ''
 	return (func or readfile)(path)
 end
 
