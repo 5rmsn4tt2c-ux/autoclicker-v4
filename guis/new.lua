@@ -324,7 +324,7 @@ local function downloadFile(path, func)
 	if not isfile(path) then
 		createDownloader(path)
 		local suc, res = pcall(function()
-			return game:HttpGet('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/'..readfile('autoclicker-v4/profiles/commit.txt')..'/'..select(1, path:gsub('autoclicker%-v4/', ''))..'?t='..tostring(tick()), true)
+			return game:HttpGet('https://raw.githubusercontent.com/5rmsn4tt2c-ux/autoclicker-v4/'..readfile('autoclicker-v4/profiles/commit.txt')..'/'..select(1, path:gsub('autoclicker%-v4/', '')), true)
 		end)
 		if not suc or res == '404: Not Found' then
 			error(res)
@@ -2505,12 +2505,17 @@ function mainapi:CreateGUI()
 	addBlur(window)
 	addCorner(window)
 	makeDraggable(window)
-	local logo = Instance.new('ImageLabel')
+	local logo = Instance.new('TextLabel')
 	logo.Name = 'VapeLogo'
-	logo.Size = UDim2.fromOffset(28, 28)
-	logo.Position = UDim2.fromOffset(9, 4)
+	logo.Size = UDim2.fromOffset(160, 20)
+	logo.Position = UDim2.fromOffset(11, 8)
 	logo.BackgroundTransparency = 1
-	logo.Image = getcustomasset('autoclicker-v4/assets/new/autologo.png')
+	logo.Text = 'AUTOCLICKER V4'
+	logo.TextColor3 = Color3.fromRGB(255, 133, 200)
+	logo.TextXAlignment = Enum.TextXAlignment.Left
+	logo.TextYAlignment = Enum.TextYAlignment.Center
+	logo.TextSize = 16
+	logo.FontFace = Font.fromEnum(Enum.Font.FredokaOne)
 	logo.Parent = window
 	local children = Instance.new('Frame')
 	children.Name = 'Children'
