@@ -51,7 +51,21 @@ local color = vape.Libraries.color
 local whitelist = vape.Libraries.whitelist
 local prediction = vape.Libraries.prediction
 local getfontsize = vape.Libraries.getfontsize
-local getfontbounds = vape.Libraries.getfontbounds
+local getfontbounds = vape.Libraries.getfontbounds or function(text, size, font)
+	if getfontsize then
+		return getfontsize(text, size, font, Vector2.new(1e5, 1e5))
+	end
+	local ts = game:GetService('TextService')
+	local suc, result = pcall(function()
+		local params = Instance.new('GetTextBoundsParams')
+		params.Text = text
+		params.Size = size
+		params.Font = font
+		params.Width = 1e5
+		return ts:GetTextBoundsAsync(params)
+	end)
+	return suc and result or Vector2.new(math.ceil(size * #text * 0.55), size + 4)
+end
 local getcustomasset = vape.Libraries.getcustomasset
 
 local function downloadFile(path, func)
