@@ -51,6 +51,7 @@ local color = vape.Libraries.color
 local whitelist = vape.Libraries.whitelist
 local prediction = vape.Libraries.prediction
 local getfontsize = vape.Libraries.getfontsize
+local getfontbounds = vape.Libraries.getfontbounds
 local getcustomasset = vape.Libraries.getcustomasset
 
 local function downloadFile(path, func)
@@ -466,6 +467,12 @@ local function getFunctionRange(func)
 end
 getgenv().getFunctionRange = getFunctionRange
 
+
+local function removeTags(str)
+	str = str:gsub('<br%s*/>', '\n')
+	return (str:gsub('<[^<>]->', ''))
+end
+getgenv().removeTags = removeTags
 
 local function notif(...)
 	return vape:CreateNotification(...)
