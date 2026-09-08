@@ -23139,7 +23139,7 @@ run(function()
 	
 					cannon.StopAimingPrompt:InputHoldBegin()
 				end
-				task.wait((cannon.StopAimingPrompt.HoldDuration + (0.2 + store.ping.total)) + runService.PostSimulation:Wait())
+				task.wait((cannon.StopAimingPrompt.HoldDuration + (0.2 + (store.ping and store.ping.total or 0.1))) + runService.PostSimulation:Wait())
 	
 				if Mode.Value == 'Legit' then
 					local success, aiming = pcall(function()
