@@ -21953,11 +21953,14 @@ run(function()
 		Function = function(callback)
 			if callback then
 				aura = ''
-				AutoSilas:Clean(bedwars.Handler:Get('UpdateRebellionAura').Remote:Connect(function(data)
-					if data.player == lplr then
-						aura = data.newAura
-					end
-				end))
+				local rebellionAuraRemote = bedwars.Handler:Get('UpdateRebellionAura')
+				if rebellionAuraRemote.Remote then
+					AutoSilas:Clean(rebellionAuraRemote.Remote:Connect(function(data)
+						if data.player == lplr then
+							aura = data.newAura
+						end
+					end))
+				end
 	
 				repeat
 					if entitylib.isAlive and store.equippedKit == 'rebellion_leader' then
@@ -22721,17 +22724,23 @@ run(function()
 		Name = 'AutoZola',
 		Function = function(callback)
 			if callback then
-				AutoZola:Clean(bedwars.Handler:Get('SoulLinkFormed').Remote:Connect(function(linkTable)
-					if linkTable.broker == lplr and not linkTable.guard then
-						links[linkTable.target] = tick() + bedwars.SoulBrokerConstants.SOUL_LINK_DURATION
-					end
-				end))
+				local soulLinkFormed = bedwars.Handler:Get('SoulLinkFormed')
+				if soulLinkFormed.Remote then
+					AutoZola:Clean(soulLinkFormed.Remote:Connect(function(linkTable)
+						if linkTable.broker == lplr and not linkTable.guard then
+							links[linkTable.target] = tick() + (bedwars.SoulBrokerConstants and bedwars.SoulBrokerConstants.SOUL_LINK_DURATION or 10)
+						end
+					end))
+				end
 	
-				AutoZola:Clean(bedwars.Handler:Get('SoulLinkRemoved').Remote:Connect(function(linkTable)
-					if linkTable.broker == lplr and not linkTable.guard then
-						links[linkTable.target] = nil
-					end
-				end))
+				local soulLinkRemoved = bedwars.Handler:Get('SoulLinkRemoved')
+				if soulLinkRemoved.Remote then
+					AutoZola:Clean(soulLinkRemoved.Remote:Connect(function(linkTable)
+						if linkTable.broker == lplr and not linkTable.guard then
+							links[linkTable.target] = nil
+						end
+					end))
+				end
 	
 				AutoZola:Clean(vapeEvents.EntityDamageEvent.Event:Connect(function(damageTable)
 					if Mode.Value ~= 'On Hit' or damageTable.fromEntity ~= lplr.Character then return end
